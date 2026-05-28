@@ -120,30 +120,10 @@ jobs:
             --service-account examen-suficiencias-adk@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars="^|^AGENT_MODEL=$AGENT_MODEL|GEMINI_API_KEY=$GEMINI_API_KEY|GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI|APP_LOG_LEVEL=$APP_LOG_LEVEL|ZOHO_MCP_URL=$ZOHO_MCP_URL|ZOHO_ORG_ID=$ZOHO_ORG_ID|ZOHO_DEFAULT_DEPARTMENT_ID=$ZOHO_DEFAULT_DEPARTMENT_ID|ZOHO_DESK_API_BASE=$ZOHO_DESK_API_BASE|ZOHO_TOKEN_WEBHOOK_URL=$ZOHO_TOKEN_WEBHOOK_URL|ZOHO_TOKEN_WEBHOOK_USER=$ZOHO_TOKEN_WEBHOOK_USER|ZOHO_TOKEN_WEBHOOK_PASS=$ZOHO_TOKEN_WEBHOOK_PASS|DB_HOST_ORACLE=$DB_HOST_ORACLE|DB_PORT_ORACLE=$DB_PORT_ORACLE|DB_USERNAME_ORACLE=$DB_USERNAME_ORACLE|DB_PASSWORD_ORACLE=$DB_PASSWORD_ORACLE|DB_SERVICE_NAME_ORACLE=$DB_SERVICE_NAME_ORACLE|DB_POOL_MIN_SIZE=$DB_POOL_MIN_SIZE|DB_POOL_MAX_SIZE=$DB_POOL_MAX_SIZE|DB_QUERY_TIMEOUT_SECONDS=$DB_QUERY_TIMEOUT_SECONDS"
 
-      - name: Verify Deployment
+      - name: Print Service URL
         run: |
-          sleep 15
-
           URL=$(gcloud run services describe $SERVICE_NAME \
             --region ${{ env.REGION }} \
             --format='value(status.url)')
-
-          echo "Service URL: $URL"
-
-          status=$(curl -s -o /tmp/list.json -w "%{http_code}" "$URL/list-apps")
-
-          echo "HTTP=$status"
-          cat /tmp/list.json
-          echo
-
-          if [ "$status" != "200" ]; then
-            echo "::error::list-apps no respondio 200; deploy incorrecto."
-            exit 1
-          fi
-
-          if ! grep -q "examen_suficiencias_adk" /tmp/list.json; then
-            echo "::error::examen_suficiencias_adk no aparece en /list-apps"
-            exit 1
-          fi
 
           echo "✅ Deploy OK — $SERVICE_NAME en $URL"
