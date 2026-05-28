@@ -9,7 +9,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION }}
+  REGION: us-central1
 
 jobs:
   deploy:
@@ -23,11 +23,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate required vars
-        run: |
-          test -n "${{ env.REGION }}" || (echo "❌ REGION vacío" && exit 1)
-          echo "✅ REGION=${{ env.REGION }}"
 
       - name: Set Environment Variables
         run: |
@@ -62,9 +57,6 @@ jobs:
 
       - name: Configure Docker
         run: |
-          echo "Configurando Docker para:"
-          echo "${{ env.REGION }}-docker.pkg.dev"
-
           gcloud auth configure-docker \
             ${{ env.REGION }}-docker.pkg.dev \
             --quiet
