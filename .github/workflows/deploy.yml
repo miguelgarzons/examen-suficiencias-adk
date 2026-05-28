@@ -30,19 +30,19 @@ jobs:
       - name: Set Environment Variables
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            echo "ENVIRONMENT=prod"                                         >> $GITHUB_ENV
-            echo "SERVICE_NAME=examen-suficiencias-adk-prod"                >> $GITHUB_ENV
-            echo "REPOSITORY=examen-suficiencias-adk-prod"                  >> $GITHUB_ENV
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-prod" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-prod" >> $GITHUB_ENV
 
           elif [[ "${GITHUB_REF_NAME}" == "qa" ]]; then
-            echo "ENVIRONMENT=qa"                                           >> $GITHUB_ENV
-            echo "SERVICE_NAME=examen-suficiencias-adk-qa"                  >> $GITHUB_ENV
-            echo "REPOSITORY=examen-suficiencias-adk-dev"                   >> $GITHUB_ENV
+            echo "ENVIRONMENT=qa" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-qa" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-dev" >> $GITHUB_ENV
 
           else
-            echo "ENVIRONMENT=dev"                                          >> $GITHUB_ENV
-            echo "SERVICE_NAME=examen-suficiencias-adk-dev"                 >> $GITHUB_ENV
-            echo "REPOSITORY=examen-suficiencias-adk-dev"                   >> $GITHUB_ENV
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-dev" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-dev" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to Google Cloud
@@ -83,13 +83,11 @@ jobs:
 
       - name: Deploy to Cloud Run
         env:
-          # ----- Google ADK / Gemini -----
           AGENT_MODEL: ${{ vars.AGENT_MODEL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
           APP_LOG_LEVEL: INFO
 
-          # ----- Zoho -----
           ZOHO_MCP_URL: ${{ vars.ZOHO_MCP_URL }}
           ZOHO_ORG_ID: ${{ vars.ZOHO_ORG_ID }}
           ZOHO_DEFAULT_DEPARTMENT_ID: ${{ vars.ZOHO_DEFAULT_DEPARTMENT_ID }}
@@ -99,7 +97,6 @@ jobs:
           ZOHO_TOKEN_WEBHOOK_USER: ${{ secrets.ZOHO_TOKEN_WEBHOOK_USER }}
           ZOHO_TOKEN_WEBHOOK_PASS: ${{ secrets.ZOHO_TOKEN_WEBHOOK_PASS }}
 
-          # ----- Oracle -----
           DB_HOST_ORACLE: ${{ vars.DB_HOST_ORACLE }}
           DB_PORT_ORACLE: ${{ vars.DB_PORT_ORACLE }}
           DB_USERNAME_ORACLE: ${{ vars.DB_USERNAME_ORACLE }}
