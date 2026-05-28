@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block heading %}Recibo de pago generado{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  De acuerdo con su solicitud, hemos <strong>generado exitosamente</strong> su recibo de pago para el examen de suficiencia.
+  A continuación encontrará el detalle:
+</p>
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:18px 0;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+  <tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;width:42%;border-bottom:1px solid #e5e7eb;">Estudiante</td><td style="padding:10px 14px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;"><strong>{{ recibo.estudiante or nombre }}</strong></td></tr>
+  <tr><td style="padding:10px 14px;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Identificación</td><td style="padding:10px 14px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ recibo.identificacion or identificacion }}</td></tr>
+  <tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Concepto</td><td style="padding:10px 14px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ recibo.concepto or 'Examen de Suficiencia' }}</td></tr>
+  <tr><td style="padding:10px 14px;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Asignatura</td><td style="padding:10px 14px;font-size:14px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ recibo.asignatura or asignatura }}{% if recibo.codigo_asignatura or codigo_asignatura %} <span style="color:#6b7280;">({{ recibo.codigo_asignatura or codigo_asignatura }})</span>{% endif %}</td></tr>
+  {% if recibo.valor %}
+  <tr style="background:#f9fafb;"><td style="padding:10px 14px;font-size:13px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Valor</td><td style="padding:10px 14px;font-size:16px;color:#c8102e;font-weight:700;border-bottom:1px solid #e5e7eb;">$ {{ recibo.valor }}</td></tr>
+  {% endif %}
+  {% if recibo.referencia %}
+  <tr><td style="padding:10px 14px;font-size:13px;color:#6b7280;">Referencia</td><td style="padding:10px 14px;font-size:14px;color:#111827;font-family:monospace;">{{ recibo.referencia }}</td></tr>
+  {% endif %}
+</table>
+
+<p style="font-size:14px;color:#374151;line-height:1.55;margin:0 0 8px 0;"><strong>Canales para consultar y pagar:</strong></p>
+<ul style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 16px 22px;padding:0;">
+  <li><strong>SINÚ:</strong> ingrese con sus credenciales institucionales en la sección de liquidaciones.</li>
+  <li><strong>Portal de pagos CUN:</strong> ingrese su tipo y número de documento.</li>
+</ul>
+
+<p style="margin:18px 0;">
+  <a href="https://botondepago.cun.edu.co:8443/BotonPago/" style="display:inline-block;background:#c8102e;color:#ffffff;text-decoration:none;padding:11px 20px;border-radius:6px;font-size:14px;font-weight:600;">
+    Ir al portal de pagos
+  </a>
+</p>
+
+<div style="background:#eff6ff;border-left:4px solid #2563eb;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:13px;color:#1e3a8a;">
+    <strong>Importante:</strong> una vez realizado el pago, adjunte el soporte (comprobante de transferencia o recibo sellado) en una nueva respuesta a este ticket. El pago por sí solo no genera la fecha de presentación del examen.
+  </p>
+</div>
+{% endblock %}

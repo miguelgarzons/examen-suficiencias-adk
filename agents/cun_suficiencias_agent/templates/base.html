@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}CUN — Comunicación institucional{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f3f4f6;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+          <tr>
+            <td style="background:#c8102e;padding:20px 28px;">
+              <table role="presentation" width="100%"><tr>
+                <td style="color:#ffffff;font-size:18px;font-weight:700;line-height:1.2;">
+                  Corporación Unificada Nacional de Educación Superior
+                </td>
+                <td align="right" style="color:#ffffff;font-size:13px;font-weight:600;letter-spacing:1px;">CUN</td>
+              </tr></table>
+            </td>
+          </tr>
+          <tr><td style="height:4px;background:#fbbf24;"></td></tr>
+          <tr>
+            <td style="padding:28px;">
+              {% block title_section %}
+              <h2 style="margin:0 0 8px 0;font-size:20px;color:#111827;">{% block heading %}Respuesta a su solicitud{% endblock %}</h2>
+              <p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;">Categoría: Emisión de Recibos de Pago · Subcategoría: Examen de Suficiencia</p>
+              {% endblock %}
+              {% block body %}{% endblock %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 28px;background:#f9fafb;border-top:1px solid #e5e7eb;font-size:12px;color:#6b7280;">
+              <p style="margin:0 0 6px 0;">Atentamente,</p>
+              <p style="margin:0;font-weight:700;color:#111827;">Líder de Innovación y Transformación Educativa (LITE)</p>
+              <p style="margin:0;">Corporación Unificada Nacional de Educación Superior — CUN</p>
+              {% if ticket_id %}<p style="margin:10px 0 0 0;color:#9ca3af;">Ref. ticket: {{ ticket_id }}</p>{% endif %}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

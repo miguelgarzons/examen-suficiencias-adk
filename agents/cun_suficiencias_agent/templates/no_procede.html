@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block heading %}Solicitud no procedente{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Recibimos su solicitud para presentar la <strong>Prueba de Suficiencia</strong>
+  {% if asignatura %}de la asignatura <strong>{{ asignatura }}</strong>{% endif %}.
+  Al realizar la validación de su historial académico y verificar los requisitos del Capítulo VII del Reglamento Estudiantil, le informamos que <strong>su petición no es procedente</strong> por el siguiente motivo:
+</p>
+
+<div style="background:#fee2e2;border-left:4px solid #c8102e;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#7f1d1d;"><strong>Motivo:</strong> {{ causal }}</p>
+</div>
+
+<p style="font-size:14px;color:#374151;line-height:1.55;margin:0 0 8px 0;"><strong>Causales más comunes contempladas en la norma:</strong></p>
+<ul style="font-size:14px;color:#4b5563;line-height:1.6;margin:0 0 16px 22px;padding:0;">
+  <li><strong>Registro previo:</strong> ya cursó o se encuentra matriculado en la asignatura.</li>
+  <li><strong>Unicidad:</strong> ya presentó una prueba de suficiencia para esta misma asignatura.</li>
+  <li><strong>Naturaleza de la asignatura:</strong> tiene componente práctico/clínico no validable.</li>
+  <li><strong>Extemporaneidad:</strong> solicitud radicada fuera del Calendario Académico.</li>
+</ul>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  <strong>Consecuencia:</strong> deberá cursar la asignatura de manera regular según su plan de estudios y los periodos académicos disponibles en la plataforma <strong>SINÚ</strong>.
+</p>
+
+<p style="font-size:14px;color:#374151;margin:18px 0 0 0;">
+  Le invitamos a consultar el Reglamento Estudiantil completo y el Calendario Académico para futuros trámites.
+</p>
+{% endblock %}

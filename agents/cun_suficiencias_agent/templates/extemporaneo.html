@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block heading %}Solicitud extemporánea{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Recibimos su solicitud para la presentación de la <strong>Prueba de Suficiencia</strong>
+  {% if asignatura %}de la asignatura <strong>{{ asignatura }}</strong>{% endif %}.
+</p>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Al revisar las fechas estipuladas en el <strong>Calendario Académico Institucional</strong> y lo dispuesto en nuestro Reglamento Estudiantil, nos permitimos informarle que su petición <strong>no es procedente por extemporaneidad</strong>.
+</p>
+
+<div style="background:#fff7ed;border-left:4px solid #f97316;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0 0 6px 0;font-size:14px;color:#9a3412;"><strong>Sustento normativo</strong></p>
+  <ul style="margin:0;padding:0 0 0 18px;font-size:14px;color:#7c2d12;line-height:1.55;">
+    <li>Las fechas para el registro, pago y solicitud de pruebas de suficiencia son perentorias y se publican al inicio del periodo.</li>
+    <li>Reglamento Estudiantil (Art. 39): todo trámite de evaluación y validación debe ceñirse estrictamente a los tiempos programados por la Institución.</li>
+  </ul>
+</div>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  <strong>Consecuencia:</strong> el sistema de registro se encuentra cerrado para este proceso, por lo que no es posible habilitar el examen en este momento.
+  Le invitamos a estar atento(a) a las fechas del próximo periodo académico, o a matricular la asignatura de forma regular.
+</p>
+
+<p style="margin:18px 0 0 0;">
+  <a href="https://cun.edu.co/" style="display:inline-block;background:#c8102e;color:#ffffff;text-decoration:none;padding:10px 18px;border-radius:6px;font-size:14px;font-weight:600;">
+    Consultar Calendario Académico
+  </a>
+</p>
+{% endblock %}

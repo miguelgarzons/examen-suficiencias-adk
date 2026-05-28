@@ -1,0 +1,125 @@
+name: Deploy cun_suficiencias_agent
+
+on:
+  push:
+    branches:
+      - main
+      - qa
+      - develop
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Environment Variables
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            echo "ENVIRONMENT=prod"                                      >> $GITHUB_ENV
+            echo "SERVICE_NAME=cun-suficiencias-agent-prod"              >> $GITHUB_ENV
+            echo "REPOSITORY=cun-suficiencias-agent-prod"                >> $GITHUB_ENV
+          elif [[ "${GITHUB_REF_NAME}" == "qa" ]]; then
+            echo "ENVIRONMENT=qa"                                        >> $GITHUB_ENV
+            echo "SERVICE_NAME=cun-suficiencias-agent-qa"                >> $GITHUB_ENV
+            echo "REPOSITORY=cun-suficiencias-agent-qa"                  >> $GITHUB_ENV
+          else
+            echo "ENVIRONMENT=dev"                                       >> $GITHUB_ENV
+            echo "SERVICE_NAME=cun-suficiencias-agent-dev"               >> $GITHUB_ENV
+            echo "REPOSITORY=cun-suficiencias-agent-dev"                 >> $GITHUB_ENV
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}
+            us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Cloud Run
+        env:
+          # ----- Google ADK / Gemini -----
+          AGENT_MODEL: ${{ secrets.AGENT_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }}
+          APP_LOG_LEVEL: INFO
+
+          # ----- Zoho -----
+          ZOHO_MCP_URL: ${{ secrets.ZOHO_MCP_URL }}
+          ZOHO_ORG_ID: ${{ secrets.ZOHO_ORG_ID }}
+          ZOHO_DEFAULT_DEPARTMENT_ID: ${{ secrets.ZOHO_DEFAULT_DEPARTMENT_ID }}
+          ZOHO_DESK_API_BASE: ${{ secrets.ZOHO_DESK_API_BASE }}
+          ZOHO_TOKEN_WEBHOOK_URL: ${{ secrets.ZOHO_TOKEN_WEBHOOK_URL }}
+          ZOHO_TOKEN_WEBHOOK_USER: ${{ secrets.ZOHO_TOKEN_WEBHOOK_USER }}
+          ZOHO_TOKEN_WEBHOOK_PASS: ${{ secrets.ZOHO_TOKEN_WEBHOOK_PASS }}
+
+          # ----- Base de datos Oracle CUN -----
+          DB_HOST_ORACLE: ${{ secrets.DB_HOST_ORACLE }}
+          DB_PORT_ORACLE: ${{ secrets.DB_PORT_ORACLE }}
+          DB_USERNAME_ORACLE: ${{ secrets.DB_USERNAME_ORACLE }}
+          DB_PASSWORD_ORACLE: ${{ secrets.DB_PASSWORD_ORACLE }}
+          DB_SERVICE_NAME_ORACLE: ${{ secrets.DB_SERVICE_NAME_ORACLE }}
+          DB_POOL_MIN_SIZE: ${{ secrets.DB_POOL_MIN_SIZE }}
+          DB_POOL_MAX_SIZE: ${{ secrets.DB_POOL_MAX_SIZE }}
+          DB_QUERY_TIMEOUT_SECONDS: ${{ secrets.DB_QUERY_TIMEOUT_SECONDS }}
+        run: |
+          gcloud run deploy $SERVICE_NAME \
+            --image us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.REGION }} \
+            --allow-unauthenticated \
+            --port 8080 \
+            --memory 1Gi \
+            --cpu 1 \
+            --timeout 300 \
+            --concurrency 10 \
+            --max-instances 10 \
+            --min-instances 0 \
+            --set-env-vars="^|^AGENT_MODEL=$AGENT_MODEL|GEMINI_API_KEY=$GEMINI_API_KEY|GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI|APP_LOG_LEVEL=$APP_LOG_LEVEL|ZOHO_MCP_URL=$ZOHO_MCP_URL|ZOHO_ORG_ID=$ZOHO_ORG_ID|ZOHO_DEFAULT_DEPARTMENT_ID=$ZOHO_DEFAULT_DEPARTMENT_ID|ZOHO_DESK_API_BASE=$ZOHO_DESK_API_BASE|ZOHO_TOKEN_WEBHOOK_URL=$ZOHO_TOKEN_WEBHOOK_URL|ZOHO_TOKEN_WEBHOOK_USER=$ZOHO_TOKEN_WEBHOOK_USER|ZOHO_TOKEN_WEBHOOK_PASS=$ZOHO_TOKEN_WEBHOOK_PASS|DB_HOST_ORACLE=$DB_HOST_ORACLE|DB_PORT_ORACLE=$DB_PORT_ORACLE|DB_USERNAME_ORACLE=$DB_USERNAME_ORACLE|DB_PASSWORD_ORACLE=$DB_PASSWORD_ORACLE|DB_SERVICE_NAME_ORACLE=$DB_SERVICE_NAME_ORACLE|DB_POOL_MIN_SIZE=$DB_POOL_MIN_SIZE|DB_POOL_MAX_SIZE=$DB_POOL_MAX_SIZE|DB_QUERY_TIMEOUT_SECONDS=$DB_QUERY_TIMEOUT_SECONDS"
+
+      - name: Verify Deployment
+        run: |
+          sleep 15
+          URL=$(gcloud run services describe $SERVICE_NAME \
+            --region ${{ env.REGION }} \
+            --format='value(status.url)')
+          echo "Service URL: $URL"
+
+          status=$(curl -s -o /tmp/list.json -w "%{http_code}" "$URL/list-apps")
+          echo "HTTP=$status"
+          cat /tmp/list.json
+          echo
+          if [ "$status" != "200" ]; then
+            echo "::error::list-apps no respondio 200; deploy mal."
+            exit 1
+          fi
+
+          if ! grep -q "cun_suficiencias_agent" /tmp/list.json; then
+            echo "::error::cun_suficiencias_agent no aparece en /list-apps"
+            exit 1
+          fi
+          echo "Deploy OK — $SERVICE_NAME en $URL"

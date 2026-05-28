@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block heading %}Solicitud incompleta{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Hemos recibido su solicitud relacionada con la presentación de una <strong>Prueba de Suficiencia</strong>.
+  Al revisar la información, identificamos que su solicitud no contiene todos los datos necesarios para dar trámite.
+</p>
+
+<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#92400e;">
+    <strong>Detalle:</strong> {{ causal }}
+  </p>
+</div>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 8px 0;">Para continuar, por favor respóndanos en este mismo ticket con:</p>
+<ul style="font-size:15px;line-height:1.6;margin:0 0 16px 24px;padding:0;">
+  <li>Nombre exacto de la asignatura.</li>
+  <li>Código de la asignatura (si lo conoce).</li>
+  <li>Número de documento de identidad.</li>
+</ul>
+
+<div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;padding:14px 16px;margin:18px 0;">
+  <p style="margin:0;font-size:13px;color:#7f1d1d;">
+    <strong>Recordatorio normativo (Capítulo VII — Reglamento Estudiantil):</strong>
+    La prueba de suficiencia valida conocimientos previos. Es requisito indispensable no haber cursado ni reprobado la asignatura previamente.
+  </p>
+</div>
+
+<p style="font-size:14px;color:#374151;margin:18px 0 0 0;">Quedamos atentos a su respuesta para continuar con el proceso.</p>
+{% endblock %}

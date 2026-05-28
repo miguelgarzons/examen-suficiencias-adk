@@ -1,0 +1,24 @@
+servers:
+  zoho:
+    enabled: true
+    transport: streamable_http
+    url: ${ZOHO_MCP_URL}
+    headers: {}
+    env: {}
+    timeout_seconds: 20
+    max_tools: 60
+    required_tool_names:
+      - "ZohoDesk_getAccessibleOrganizations"
+      - "ZohoDesk_getTicket"
+      - "ZohoDesk_createTicketComment"
+      - "ZohoDesk_closeTickets"
+      - "ZohoDesk_sendReply"
+    include_name_patterns:
+      - "ZohoDesk_.*Ticket.*"
+      - "ZohoDesk_.*Department.*"
+      - "ZohoDesk_createTicketComment"
+      - "ZohoDesk_closeTickets"
+      - "ZohoDesk_sendReply"
+      - "ZohoDesk_getReplyMailAddresses"
+      - "ZohoDesk_getAccessibleOrganizations"
+    tool_name_prefix: zoho

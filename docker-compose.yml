@@ -1,0 +1,12 @@
+services:
+  adk-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: cun-suficiencias-agent:local
+    container_name: cun-suficiencias-agent
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
