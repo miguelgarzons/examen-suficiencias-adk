@@ -19,6 +19,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required vars
+        run: |
+          test -n "${{ env.PROJECT_ID }}" || (echo "❌ PROJECT_ID vacío" && exit 1)
+          test -n "${{ env.REGION }}" || (echo "❌ REGION vacío" && exit 1)
+
+          echo "✅ PROJECT_ID=${{ env.PROJECT_ID }}"
+          echo "✅ REGION=${{ env.REGION }}"
+
       - name: Set Environment Variables
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
@@ -45,8 +53,19 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Verify gcloud
+        run: |
+          gcloud --version
+          gcloud config list
+
       - name: Configure Docker
-        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+        run: |
+          echo "Configurando Docker para:"
+          echo "${{ env.REGION }}-docker.pkg.dev"
+
+          gcloud auth configure-docker \
+            ${{ env.REGION }}-docker.pkg.dev \
+            --quiet
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -133,4 +152,4 @@ jobs:
             exit 1
           fi
 
-          echo "Deploy OK — $SERVICE_NAME en $URL"
+          echo "✅ Deploy OK — $SERVICE_NAME en $URL"
