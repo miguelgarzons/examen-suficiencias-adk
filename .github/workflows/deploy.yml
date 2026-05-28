@@ -8,7 +8,7 @@ on:
       - develop
 
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   REGION: ${{ vars.GCP_REGION }}
 
 jobs:
@@ -26,10 +26,7 @@ jobs:
 
       - name: Validate required vars
         run: |
-          test -n "${{ env.PROJECT_ID }}" || (echo "❌ PROJECT_ID vacío" && exit 1)
           test -n "${{ env.REGION }}" || (echo "❌ REGION vacío" && exit 1)
-
-          echo "✅ PROJECT_ID=${{ env.PROJECT_ID }}"
           echo "✅ REGION=${{ env.REGION }}"
 
       - name: Set Environment Variables
