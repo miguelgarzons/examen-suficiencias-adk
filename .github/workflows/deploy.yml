@@ -79,7 +79,7 @@ jobs:
         env:
           # ----- Google ADK / Gemini -----
           AGENT_MODEL: ${{ vars.AGENT_MODEL }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ vars.GEMINI_API_KEY }}
           GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
           APP_LOG_LEVEL: INFO
 
@@ -89,15 +89,15 @@ jobs:
           ZOHO_DEFAULT_DEPARTMENT_ID: ${{ vars.ZOHO_DEFAULT_DEPARTMENT_ID }}
           ZOHO_DESK_API_BASE: ${{ vars.ZOHO_DESK_API_BASE }}
 
-          ZOHO_TOKEN_WEBHOOK_URL: ${{ secrets.ZOHO_TOKEN_WEBHOOK_URL }}
-          ZOHO_TOKEN_WEBHOOK_USER: ${{ secrets.ZOHO_TOKEN_WEBHOOK_USER }}
-          ZOHO_TOKEN_WEBHOOK_PASS: ${{ secrets.ZOHO_TOKEN_WEBHOOK_PASS }}
+          ZOHO_TOKEN_WEBHOOK_URL: ${{ vars.ZOHO_TOKEN_WEBHOOK_URL }}
+          ZOHO_TOKEN_WEBHOOK_USER: ${{ vars.ZOHO_TOKEN_WEBHOOK_USER }}
+          ZOHO_TOKEN_WEBHOOK_PASS: ${{ vars.ZOHO_TOKEN_WEBHOOK_PASS }}
 
           # ----- Oracle -----
           DB_HOST_ORACLE: ${{ vars.DB_HOST_ORACLE }}
           DB_PORT_ORACLE: ${{ vars.DB_PORT_ORACLE }}
           DB_USERNAME_ORACLE: ${{ vars.DB_USERNAME_ORACLE }}
-          DB_PASSWORD_ORACLE: ${{ secrets.DB_PASSWORD_ORACLE }}
+          DB_PASSWORD_ORACLE: ${{ vars.DB_PASSWORD_ORACLE }}
           DB_SERVICE_NAME_ORACLE: ${{ vars.DB_SERVICE_NAME_ORACLE }}
 
           DB_POOL_MIN_SIZE: ${{ vars.DB_POOL_MIN_SIZE }}
