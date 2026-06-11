@@ -1,4 +1,4 @@
-"""Consulta de derechos pecuniarios (catálogo) desde iceberg.V_ADK_PECUNIARIOS."""
+"""Consulta de derechos pecuniarios desde catálogo interno CUN."""
 from __future__ import annotations
 
 from google.adk.agents import BaseAgent
@@ -6,7 +6,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 from google.genai import types as genai_types
 
-from ..tools.sql_client import PecuniariosRepository
+from ..tools.cun_services import PecuniariosRepository
 from .common import StateKeys, append_error, log_event
 
 

@@ -1,4 +1,4 @@
-"""Consulta de pagos empresariales desde iceberg.V_ADK_PAGOS.
+"""Consulta de pagos empresariales desde servicio interno CUN.
 
 Calcula `pago_validado=True` si algún registro tiene estado APROBADO/VALIDADO/PAGADO.
 """
@@ -9,7 +9,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 from google.genai import types as genai_types
 
-from ..tools.sql_client import PagosRepository
+from ..tools.cun_services import PagosRepository
 from ..tools.validators import row_any_value
 from .common import StateKeys, append_error, log_event
 
@@ -37,8 +37,10 @@ class ConsultaPagosAgent(BaseAgent):
 
         try:
             rows = await PagosRepository.by_nit(identificacion)
-            pago_validado = row_any_value(rows, "ESTADO", _ESTADOS_VALIDOS) or row_any_value(
-                rows, "estado", _ESTADOS_VALIDOS
+            pago_validado = (
+                row_any_value(rows, "ESTADO", _ESTADOS_VALIDOS)
+                or row_any_value(rows, "estado", _ESTADOS_VALIDOS)
+                or row_any_value(rows, "status", _ESTADOS_VALIDOS)
             )
             log_event(
                 "PIPELINE_PAGOS",

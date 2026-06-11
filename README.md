@@ -12,18 +12,17 @@ Patrón: `adk api_server` puro + `BaseAgent` determinístico + Jinja institucion
 - **`root_agent`** = `OrchestratorAgent` (`BaseAgent` custom) que encadena subagentes y ramifica según `session.state`.
 - Cada subagente es un `BaseAgent` con `_run_async_impl`, emite `Event` con `EventActions(state_delta={...})`.
 - El LLM **no** participa en lógica de negocio ni en el cierre — todo es determinístico.
-- Persistencia: vistas Iceberg vía `asyncpg`. Pool lazy, lectura de env en runtime.
-- Integraciones: Zoho Desk MCP (escritura) + Zoho REST (descarga de adjuntos) + n8n webhook (refresh OAuth).
+- Integraciones: servicios internos CUN vía HTTP, Zoho Desk MCP (escritura), Zoho REST (descarga de adjuntos) y n8n webhook (refresh OAuth).
 
 ## 2. Flujo del pipeline
 
 ```
 receptor                       ← parsea newMessage.parts[0].text
-  → consulta_liquidacion       ← SELECT … ICEBERG.V_ADK_LIQUIDACION
+  → consulta_liquidacion       ← compatibilidad; consulta externa deshabilitada
     → validador                ← 7 reglas determinísticas
       → IF procede:
-          consulta_pagos       ← SELECT … V_ADK_PAGOS + pago_validado
-          consulta_pecuniarios ← SELECT … V_ADK_PECUNIARIOS
+          consulta_pagos       ← servicio company-payments + pago_validado
+          consulta_pecuniarios ← servicio additional-fees
           generador_recibo     ← dict canónico del recibo
       → cierre (SIEMPRE)       ← Jinja → RESPONSE_HTML → Event final
 ```
@@ -31,7 +30,7 @@ receptor                       ← parsea newMessage.parts[0].text
 **Garantía**: el `cierre` se ejecuta siempre, incluso si:
 - el payload no se puede parsear
 - faltan campos obligatorios
-- una consulta SQL falla
+- un servicio CUN falla
 - la solicitud no procede
 - falta una variable de entorno
 - Zoho no responde
@@ -43,7 +42,7 @@ cun_suficiencias_agent/                   (= "mi_agente" del spec; raíz del pro
 ├── Dockerfile                            single-stage, python:3.12-slim-bookworm
 ├── docker-compose.yml                    1 servicio adk-api en :8080
 ├── requirements.txt
-├── .env / .env.example                   ADK + Zoho + DB vars
+├── .env / .env.example                   ADK + Zoho + servicios CUN
 ├── .gitignore / .dockerignore
 ├── README.md                             este archivo
 ├── .github/workflows/deploy.yml          GH Actions → Artifact Registry → Cloud Run
@@ -64,7 +63,7 @@ cun_suficiencias_agent/                   (= "mi_agente" del spec; raíz del pro
         │   ├── cierre.py                 render Jinja + Event final (sin LLM)
         │   └── orchestrator.py           ramifica según PROCEDE
         ├── tools/
-        │   ├── sql_client.py             pool asyncpg + Repositories
+        │   ├── cun_services.py           cliente HTTP servicios CUN
         │   ├── template_renderer.py      Jinja2 con autoescape + fallback
         │   ├── validators.py             helpers + evaluar_procedencia
         │   ├── response_builder.py       construir_recibo + elegir_template
@@ -99,11 +98,11 @@ Copiar `.env.example` a `.env` y rellenar. Las vars `VPS_*` son del helper `conn
 
 Para usar sandbox o production se cambian manualmente los valores de esas mismas variables; el código no usa selector de ambiente ni sufijos.
 
-### Base de datos Oracle CUN
+### Servicios internos CUN
 
-`DB_HOST_ORACLE`, `DB_PORT_ORACLE` (default `1521`), `DB_USERNAME_ORACLE`, `DB_PASSWORD_ORACLE`, `DB_SERVICE_NAME_ORACLE`, `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE`, `DB_QUERY_TIMEOUT_SECONDS`.
+`CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL`, `CUN_COMPANY_PAYMENTS_NIT_PARAM`, `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME`, `CUN_SERVICES_PASSWORD`, `CUN_SERVICES_API_TOKEN`, `CUN_SERVICES_TIMEOUT_SECONDS`, `CUN_SERVICES_VERIFY_SSL`.
 
-DSN se construye automáticamente como `host:port/service_name` (formato Easy Connect).
+El cliente genera token con `POST CUN_SERVICES_AUTH_URL` usando `username/password` y lo envía como `Authorization: Bearer <access_token>`. `CUN_SERVICES_API_TOKEN` queda como override opcional si se necesita inyectar un token fijo.
 
 ## 5. Ejecución local
 
@@ -169,15 +168,15 @@ El último evento del stream contiene el HTML institucional (`StateKeys.RESPONSE
 ### Casos de prueba sugeridos
 
 1. **Payload sin `cf_asignatura`** → `solicitud_incompleta.html`.
-2. **Estudiante ya cursó la materia** (mock en V_ADK_LIQUIDACION) → `no_procede.html`.
+2. **Estudiante ya cursó la materia** (flag en ticket o liquidación inyectada al state) → `no_procede.html`.
 3. **Fuera de calendario** (flag `extemporaneo=true`) → `extemporaneo.html`.
 4. **Procede + sin pago previo** → `recibo_generado.html`.
-5. **Pago empresarial APROBADO** en V_ADK_PAGOS → `pago_validado.html`.
-6. **DB caída** → `no_procede.html` + `ERRORES` poblado, sin HTTP 500.
+5. **Pago empresarial APROBADO** en `company-payments` → `pago_validado.html`.
+6. **Servicio CUN caído** → `ERRORES` poblado, sin HTTP 500.
 
 ## 7. Despliegue a Cloud Run
 
-Push a `main` → prod · `qa` → qa · cualquier otra → dev.
+Push a `main` → dev · `qa` → qa · cualquier otra → dev.
 
 ```
 us-central1 · 1Gi · 1 CPU · timeout 300s · concurrency 10
@@ -197,8 +196,10 @@ El workflow construye imagen single-stage, sube a Artifact Registry y despliega 
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` |
 | `ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE` | Zoho Desk |
 | `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS` | n8n token webhook |
-| `DB_HOST_ORACLE`, `DB_PORT_ORACLE`, `DB_USERNAME_ORACLE`, `DB_PASSWORD_ORACLE`, `DB_SERVICE_NAME_ORACLE` | Base académica/financiera Oracle |
-| `DB_POOL_MIN_SIZE`, `DB_POOL_MAX_SIZE`, `DB_QUERY_TIMEOUT_SECONDS` | Tunings opcionales |
+| `CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL` | Servicios internos CUN |
+| `CUN_COMPANY_PAYMENTS_NIT_PARAM` | Parámetro NIT para `company-payments` (`nitEmpresa`) |
+| `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME`, `CUN_SERVICES_PASSWORD` | Login para generar token |
+| `CUN_SERVICES_API_TOKEN`, `CUN_SERVICES_TIMEOUT_SECONDS`, `CUN_SERVICES_VERIFY_SSL` | Token fijo opcional, timeout y verificación TLS |
 
 ### Bootstrap GCP (una sola vez)
 
@@ -226,25 +227,13 @@ cat /tmp/sa-key.json   # → copiar a GitHub Secret `GCP_SA_KEY`
 rm /tmp/sa-key.json
 ```
 
-## 9. Notas sobre SQL driver
+## 9. Notas sobre servicios CUN
 
-El cliente usa **`python-oracledb` 2.x en modo thin** (pura implementación Python, sin Oracle Instant Client). Funciona out-of-the-box en Cloud Run.
-
-- **Requisito en el servidor**: Oracle Database **12.1 o superior** (thin mode no soporta 11g; si la base CUN es más vieja, hay que habilitar thick mode + Instant Client en el Dockerfile).
-- **DSN**: se construye como `${DB_HOST_ORACLE}:${DB_PORT_ORACLE}/${DB_SERVICE_NAME_ORACLE}` (Easy Connect). Para wallets/TLS hay que adaptar a `tcps://...` y montar el wallet.
-- **Placeholders**: nombrados (`:identificacion`, `:nit`). No usar `?` ni `$1`.
-- **Normalización de columnas**: Oracle devuelve nombres en UPPERCASE; `fetch_all`/`fetch_one` los normaliza a lowercase para consistencia con el resto del agente.
-- **Timeout**: `DB_QUERY_TIMEOUT_SECONDS` se aplica como `connection.call_timeout` (en ms).
-
-**Si en el futuro hay que migrar a otro backend** (PostgreSQL, Trino, BigQuery, Snowflake), sustituir el driver manteniendo la interfaz pública de [tools/sql_client.py](agents/cun_suficiencias_agent/tools/sql_client.py):
-
-- `fetch_one(query, **params) -> dict | None`
-- `fetch_all(query, **params) -> list[dict]`
-- `LiquidacionRepository.by_identificacion(...)`
-- `PagosRepository.by_nit(...)`
-- `PecuniariosRepository.all()`
-
-Y ajustar los placeholders según el driver (`$1` para asyncpg, `?` para SQLAlchemy/Trino). El resto del agente no cambia.
+- `tools/cun_services.py` consume `additional-fees` para catálogo de pecuniarios.
+- `tools/cun_services.py` consume `company-payments` para pagos de terceros y filtra por NIT/identificación cuando el servicio retorna catálogo completo.
+- Los endpoints requieren autorización; configurar `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME` y `CUN_SERVICES_PASSWORD` en `.env`, GitHub Secrets o Cloud Run.
+- Si `CUN_SERVICES_API_TOKEN` está definido, se usa como token fijo y no se hace login.
+- En STG, `CUN_SERVICES_VERIFY_SSL=false` evita fallos por cadena TLS autofirmada.
 
 ## 10. Notas sobre Zoho
 
