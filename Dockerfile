@@ -32,7 +32,6 @@ RUN python -m venv /opt/venv \
 
 # Codigo de la aplicacion.
 COPY --chown=adk:adk agents /app/agents
-COPY --chown=adk:adk config /app/config
 
 USER adk
 
