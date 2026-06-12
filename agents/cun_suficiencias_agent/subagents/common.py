@@ -28,6 +28,7 @@ class StateKeys:
     ERRORES = "errores"
     WARNINGS = "warnings"
     PAGO_VALIDADO = "pago_validado"
+    ZOHO_RESULT = "zoho_result"
 
 
 class TemplateNames:
