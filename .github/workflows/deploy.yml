@@ -7,9 +7,11 @@ on:
       - qa
       - develop
 
+# Lee primero Variables del repo y cae a Secrets si no existen, para que el
+# mismo workflow sirva en repos configurados de cualquiera de las dos formas.
 env:
-  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  REGION: ${{ vars.GCP_REGION }}
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID || secrets.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION || 'us-central1' }}
 
 jobs:
   deploy:
@@ -83,15 +85,15 @@ jobs:
 
       - name: Deploy to Cloud Run
         env:
-          AGENT_MODEL: ${{ vars.AGENT_MODEL }}
+          AGENT_MODEL: ${{ vars.AGENT_MODEL || secrets.AGENT_MODEL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI || secrets.GOOGLE_GENAI_USE_VERTEXAI }}
           APP_LOG_LEVEL: INFO
 
-          ZOHO_MCP_URL: ${{ vars.ZOHO_MCP_URL }}
-          ZOHO_ORG_ID: ${{ vars.ZOHO_ORG_ID }}
-          ZOHO_DEFAULT_DEPARTMENT_ID: ${{ vars.ZOHO_DEFAULT_DEPARTMENT_ID }}
-          ZOHO_DESK_API_BASE: ${{ vars.ZOHO_DESK_API_BASE }}
+          ZOHO_MCP_URL: ${{ vars.ZOHO_MCP_URL || secrets.ZOHO_MCP_URL }}
+          ZOHO_ORG_ID: ${{ vars.ZOHO_ORG_ID || secrets.ZOHO_ORG_ID }}
+          ZOHO_DEFAULT_DEPARTMENT_ID: ${{ vars.ZOHO_DEFAULT_DEPARTMENT_ID || secrets.ZOHO_DEFAULT_DEPARTMENT_ID }}
+          ZOHO_DESK_API_BASE: ${{ vars.ZOHO_DESK_API_BASE || secrets.ZOHO_DESK_API_BASE }}
 
           ZOHO_TOKEN_WEBHOOK_URL: ${{ secrets.ZOHO_TOKEN_WEBHOOK_URL }}
           ZOHO_TOKEN_WEBHOOK_USER: ${{ secrets.ZOHO_TOKEN_WEBHOOK_USER }}
