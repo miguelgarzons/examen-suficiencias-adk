@@ -1,4 +1,4 @@
-name: Deploy cun_suficiencias_agent
+name: Deploy examen_suficiencias_adk
 
 on:
   push:
@@ -8,8 +8,8 @@ on:
       - develop
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  REGION: us-central1
+  PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  REGION: ${{ vars.GCP_REGION }}
 
 jobs:
   deploy:
@@ -19,20 +19,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required vars
+        run: |
+          test -n "${{ env.PROJECT_ID }}" || (echo "❌ PROJECT_ID vacío" && exit 1)
+          test -n "${{ env.REGION }}" || (echo "❌ REGION vacío" && exit 1)
+
+          echo "✅ PROJECT_ID=${{ env.PROJECT_ID }}"
+          echo "✅ REGION=${{ env.REGION }}"
+
       - name: Set Environment Variables
         run: |
           if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            echo "ENVIRONMENT=dev"                                       >> $GITHUB_ENV
-            echo "SERVICE_NAME=cun-suficiencias-agent-dev"               >> $GITHUB_ENV
-            echo "REPOSITORY=cun-suficiencias-agent-dev"                 >> $GITHUB_ENV
+            echo "ENVIRONMENT=prod" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-prod" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-prod" >> $GITHUB_ENV
+
           elif [[ "${GITHUB_REF_NAME}" == "qa" ]]; then
-            echo "ENVIRONMENT=qa"                                        >> $GITHUB_ENV
-            echo "SERVICE_NAME=cun-suficiencias-agent-qa"                >> $GITHUB_ENV
-            echo "REPOSITORY=cun-suficiencias-agent-qa"                  >> $GITHUB_ENV
+            echo "ENVIRONMENT=qa" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-qa" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-dev" >> $GITHUB_ENV
+
           else
-            echo "ENVIRONMENT=dev"                                       >> $GITHUB_ENV
-            echo "SERVICE_NAME=cun-suficiencias-agent-dev"               >> $GITHUB_ENV
-            echo "REPOSITORY=cun-suficiencias-agent-dev"                 >> $GITHUB_ENV
+            echo "ENVIRONMENT=dev" >> $GITHUB_ENV
+            echo "SERVICE_NAME=examen-suficiencias-adk-dev" >> $GITHUB_ENV
+            echo "REPOSITORY=examen-suficiencias-adk-dev" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to Google Cloud
@@ -43,20 +53,19 @@ jobs:
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Ensure Artifact Registry Repository
+      - name: Verify gcloud
         run: |
-          if ! gcloud artifacts repositories describe ${{ env.REPOSITORY }} \
-            --project ${{ env.PROJECT_ID }} \
-            --location ${{ env.REGION }} >/dev/null 2>&1; then
-            gcloud artifacts repositories create ${{ env.REPOSITORY }} \
-              --project ${{ env.PROJECT_ID }} \
-              --location ${{ env.REGION }} \
-              --repository-format docker \
-              --description "Imagenes del agente ADK examen de suficiencias (${{ env.ENVIRONMENT }})"
-          fi
+          gcloud --version
+          gcloud config list
 
       - name: Configure Docker
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+        run: |
+          echo "Configurando Docker para:"
+          echo "${{ env.REGION }}-docker.pkg.dev"
+
+          gcloud auth configure-docker \
+            ${{ env.REGION }}-docker.pkg.dev \
+            --quiet
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -67,41 +76,41 @@ jobs:
           context: .
           push: true
           tags: |
-            us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}
-            us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:latest
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }}
+            ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Deploy to Cloud Run
         env:
-          # ----- Google ADK / Gemini -----
-          AGENT_MODEL: ${{ secrets.AGENT_MODEL }}
+          AGENT_MODEL: ${{ vars.AGENT_MODEL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GOOGLE_GENAI_USE_VERTEXAI: ${{ secrets.GOOGLE_GENAI_USE_VERTEXAI }}
+          GOOGLE_GENAI_USE_VERTEXAI: ${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}
           APP_LOG_LEVEL: INFO
 
-          # ----- Zoho -----
-          ZOHO_MCP_URL: ${{ secrets.ZOHO_MCP_URL }}
-          ZOHO_ORG_ID: ${{ secrets.ZOHO_ORG_ID }}
-          ZOHO_DEFAULT_DEPARTMENT_ID: ${{ secrets.ZOHO_DEFAULT_DEPARTMENT_ID }}
-          ZOHO_DESK_API_BASE: ${{ secrets.ZOHO_DESK_API_BASE }}
+          ZOHO_MCP_URL: ${{ vars.ZOHO_MCP_URL }}
+          ZOHO_ORG_ID: ${{ vars.ZOHO_ORG_ID }}
+          ZOHO_DEFAULT_DEPARTMENT_ID: ${{ vars.ZOHO_DEFAULT_DEPARTMENT_ID }}
+          ZOHO_DESK_API_BASE: ${{ vars.ZOHO_DESK_API_BASE }}
+
           ZOHO_TOKEN_WEBHOOK_URL: ${{ secrets.ZOHO_TOKEN_WEBHOOK_URL }}
           ZOHO_TOKEN_WEBHOOK_USER: ${{ secrets.ZOHO_TOKEN_WEBHOOK_USER }}
           ZOHO_TOKEN_WEBHOOK_PASS: ${{ secrets.ZOHO_TOKEN_WEBHOOK_PASS }}
 
-          # ----- Servicios internos CUN -----
-          CUN_ADDITIONAL_FEES_URL: ${{ secrets.CUN_ADDITIONAL_FEES_URL }}
-          CUN_COMPANY_PAYMENTS_URL: ${{ secrets.CUN_COMPANY_PAYMENTS_URL }}
-          CUN_COMPANY_PAYMENTS_NIT_PARAM: ${{ secrets.CUN_COMPANY_PAYMENTS_NIT_PARAM }}
-          CUN_SERVICES_AUTH_URL: ${{ secrets.CUN_SERVICES_AUTH_URL }}
+          CUN_ADDITIONAL_FEES_URL: ${{ vars.CUN_ADDITIONAL_FEES_URL }}
+          CUN_COMPANY_PAYMENTS_URL: ${{ vars.CUN_COMPANY_PAYMENTS_URL }}
+          CUN_COMPANY_PAYMENTS_NIT_PARAM: ${{ vars.CUN_COMPANY_PAYMENTS_NIT_PARAM }}
+          CUN_SERVICES_AUTH_URL: ${{ vars.CUN_SERVICES_AUTH_URL }}
+          CUN_SERVICES_TIMEOUT_SECONDS: ${{ vars.CUN_SERVICES_TIMEOUT_SECONDS }}
+          CUN_SERVICES_VERIFY_SSL: ${{ vars.CUN_SERVICES_VERIFY_SSL }}
+
           CUN_SERVICES_USERNAME: ${{ secrets.CUN_SERVICES_USERNAME }}
           CUN_SERVICES_PASSWORD: ${{ secrets.CUN_SERVICES_PASSWORD }}
           CUN_SERVICES_API_TOKEN: ${{ secrets.CUN_SERVICES_API_TOKEN }}
-          CUN_SERVICES_TIMEOUT_SECONDS: ${{ secrets.CUN_SERVICES_TIMEOUT_SECONDS }}
-          CUN_SERVICES_VERIFY_SSL: ${{ secrets.CUN_SERVICES_VERIFY_SSL }}
+
         run: |
           gcloud run deploy $SERVICE_NAME \
-            --image us-central1-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }} \
+            --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }} \
             --platform managed \
             --region ${{ env.REGION }} \
             --allow-unauthenticated \
@@ -112,22 +121,27 @@ jobs:
             --concurrency 10 \
             --max-instances 10 \
             --min-instances 0 \
+            --service-account examen-suficiencias-adk@${{ env.PROJECT_ID }}.iam.gserviceaccount.com \
             --set-env-vars="^|^AGENT_MODEL=$AGENT_MODEL|GEMINI_API_KEY=$GEMINI_API_KEY|GOOGLE_GENAI_USE_VERTEXAI=$GOOGLE_GENAI_USE_VERTEXAI|APP_LOG_LEVEL=$APP_LOG_LEVEL|ZOHO_MCP_URL=$ZOHO_MCP_URL|ZOHO_ORG_ID=$ZOHO_ORG_ID|ZOHO_DEFAULT_DEPARTMENT_ID=$ZOHO_DEFAULT_DEPARTMENT_ID|ZOHO_DESK_API_BASE=$ZOHO_DESK_API_BASE|ZOHO_TOKEN_WEBHOOK_URL=$ZOHO_TOKEN_WEBHOOK_URL|ZOHO_TOKEN_WEBHOOK_USER=$ZOHO_TOKEN_WEBHOOK_USER|ZOHO_TOKEN_WEBHOOK_PASS=$ZOHO_TOKEN_WEBHOOK_PASS|CUN_ADDITIONAL_FEES_URL=$CUN_ADDITIONAL_FEES_URL|CUN_COMPANY_PAYMENTS_URL=$CUN_COMPANY_PAYMENTS_URL|CUN_COMPANY_PAYMENTS_NIT_PARAM=$CUN_COMPANY_PAYMENTS_NIT_PARAM|CUN_SERVICES_AUTH_URL=$CUN_SERVICES_AUTH_URL|CUN_SERVICES_USERNAME=$CUN_SERVICES_USERNAME|CUN_SERVICES_PASSWORD=$CUN_SERVICES_PASSWORD|CUN_SERVICES_API_TOKEN=$CUN_SERVICES_API_TOKEN|CUN_SERVICES_TIMEOUT_SECONDS=$CUN_SERVICES_TIMEOUT_SECONDS|CUN_SERVICES_VERIFY_SSL=$CUN_SERVICES_VERIFY_SSL"
 
       - name: Verify Deployment
         run: |
           sleep 15
+
           URL=$(gcloud run services describe $SERVICE_NAME \
             --region ${{ env.REGION }} \
             --format='value(status.url)')
+
           echo "Service URL: $URL"
 
           status=$(curl -s -o /tmp/list.json -w "%{http_code}" "$URL/list-apps")
+
           echo "HTTP=$status"
           cat /tmp/list.json
           echo
+
           if [ "$status" != "200" ]; then
-            echo "::error::list-apps no respondio 200; deploy mal."
+            echo "::error::list-apps no respondio 200; deploy incorrecto."
             exit 1
           fi
 
@@ -135,4 +149,5 @@ jobs:
             echo "::error::cun_suficiencias_agent no aparece en /list-apps"
             exit 1
           fi
-          echo "Deploy OK — $SERVICE_NAME en $URL"
+
+          echo "✅ Deploy OK — $SERVICE_NAME en $URL"
