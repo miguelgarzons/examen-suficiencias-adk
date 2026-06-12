@@ -1,7 +1,9 @@
 """Cliente HTTP para servicios internos CUN usados por el agente."""
 from __future__ import annotations
 
+import asyncio
 import os
+import time
 from typing import Any
 
 import httpx
@@ -16,7 +18,10 @@ DEFAULT_COMPANY_PAYMENTS_URL = (
 )
 DEFAULT_AUTH_URL = "https://appzoho-stg.cunapp.pro/api/v1/auth/login"
 
-_token_cache: str = ""
+_DEFAULT_LOGIN_TTL_SECONDS = 1800
+
+_token_cache: tuple[str, float] | None = None  # (token, expira_en)
+_token_lock = asyncio.Lock()
 
 
 def _env(name: str, default: str = "") -> str:
@@ -37,35 +42,42 @@ def _verify_ssl() -> bool:
 
 async def _get_token(force_refresh: bool = False) -> str:
     global _token_cache
-    if _token_cache and not force_refresh:
-        return _token_cache
 
+    # Token estático: no hay refresh posible; se usa siempre, incluso tras un 401.
     static_token = _env("CUN_SERVICES_API_TOKEN")
-    if static_token and not force_refresh:
-        _token_cache = static_token
-        return _token_cache
+    if static_token:
+        return static_token
 
     username = _env("CUN_SERVICES_USERNAME")
     password = _env("CUN_SERVICES_PASSWORD")
     if not username or not password:
         return ""
 
-    auth_url = _env("CUN_SERVICES_AUTH_URL", DEFAULT_AUTH_URL)
-    log_event("CUN_SERVICES_TOKEN_FETCH", auth_url=auth_url)
-    async with httpx.AsyncClient(timeout=_timeout(), verify=_verify_ssl()) as client:
-        response = await client.post(
-            auth_url,
-            json={"username": username, "password": password},
-            headers={"Accept": "application/json"},
-        )
-        response.raise_for_status()
-        data = response.json()
+    now = time.time()
+    if not force_refresh and _token_cache and _token_cache[1] > now:
+        return _token_cache[0]
 
-    token = data.get("access_token") or data.get("token")
-    if not token:
-        raise ValueError(f"Token no presente en respuesta de auth: {list(data)[:5]}")
-    _token_cache = str(token)
-    return _token_cache
+    async with _token_lock:
+        if not force_refresh and _token_cache and _token_cache[1] > time.time():
+            return _token_cache[0]
+
+        auth_url = _env("CUN_SERVICES_AUTH_URL", DEFAULT_AUTH_URL)
+        log_event("CUN_SERVICES_TOKEN_FETCH", auth_url=auth_url)
+        async with httpx.AsyncClient(timeout=_timeout(), verify=_verify_ssl()) as client:
+            response = await client.post(
+                auth_url,
+                json={"username": username, "password": password},
+                headers={"Accept": "application/json"},
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        token = data.get("access_token") or data.get("token")
+        if not token:
+            raise ValueError(f"Token no presente en respuesta de auth: {list(data)[:5]}")
+        ttl = max(int(data.get("expires_in", _DEFAULT_LOGIN_TTL_SECONDS)) - 60, 60)
+        _token_cache = (str(token), time.time() + ttl)
+        return _token_cache[0]
 
 
 async def _headers(force_refresh: bool = False) -> dict[str, str]:
@@ -127,9 +139,11 @@ class PagosRepository:
         url = _env("CUN_COMPANY_PAYMENTS_URL", DEFAULT_COMPANY_PAYMENTS_URL)
         nit_param = _env("CUN_COMPANY_PAYMENTS_NIT_PARAM", "nitEmpresa")
         rows = await _get_rows(url, params={nit_param: nit})
+        # Solo filas que matcheen el NIT: devolver todo cuando el filtro queda
+        # vacío permitiría validar pagos de otra empresa.
         filtered = [row for row in rows if _row_matches_nit(row, nit)]
         log_event("CUN_COMPANY_PAYMENTS", rows=len(rows), filtered=len(filtered))
-        return filtered or rows
+        return filtered
 
 
 class PecuniariosRepository:

@@ -17,6 +17,11 @@ class ValidadorAgent(BaseAgent):
         liquidacion = state.get(StateKeys.LIQUIDACION) or []
 
         log_event("PIPELINE_VALIDADOR", step="start")
+        if not liquidacion:
+            # consulta_liquidacion está deshabilitada: las reglas 3-7 (historial
+            # académico) no pueden disparar; solo aplican campos obligatorios y
+            # el flag extemporaneo del ticket.
+            log_event("PIPELINE_VALIDADOR", step="liquidacion_vacia_reglas_3_7_inactivas")
         procede, causal, template = evaluar_procedencia(ticket, liquidacion)
         log_event(
             "PIPELINE_VALIDADOR",

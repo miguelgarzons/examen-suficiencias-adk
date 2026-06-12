@@ -1,36 +1,50 @@
-"""Descarga de adjuntos Zoho Desk via REST + token OAuth desde webhook n8n.
+"""Descarga de adjuntos Zoho Desk via REST + token OAuth.
 
 MCP no descarga bytes; por eso se usa REST con Authorization: Zoho-oauthtoken.
-Token cacheado por (label, url, user). Refresh automático en 401.
+El token sale del OAuth interno (zoho_oauth, preferido) o del webhook n8n
+(camino legado mientras se migran las credenciales). Cache con TTL y refresh
+automático en 401.
 """
 from __future__ import annotations
 
 import base64
+import time
 from typing import Any
 
 import httpx
 
 from ..subagents.common import log_event
+from . import zoho_oauth
 from .zoho_config import get_zoho_settings
 
-_token_cache: dict[tuple[str, str, str], str] = {}
+_WEBHOOK_TOKEN_TTL_SECONDS = 3000  # tokens Zoho viven 3600s; margen de 10 min
+
+_token_cache: dict[tuple[str, str], tuple[str, float]] = {}
 
 
 async def _get_zoho_token(force_refresh: bool = False) -> str:
+    if zoho_oauth.is_configured():
+        return await zoho_oauth.get_access_token(force_refresh=force_refresh)
+
+    # Camino legado: webhook n8n. Anti-patrón según skill v2 — migrar a
+    # ZOHO_OAUTH_* y eliminar este bloque.
     settings = get_zoho_settings()
     if not settings.token_webhook_url:
-        raise RuntimeError("ZOHO_TOKEN_WEBHOOK_URL no configurado")
+        raise RuntimeError("Ni ZOHO_OAUTH_* ni ZOHO_TOKEN_WEBHOOK_URL configurados")
 
-    key = (settings.env, settings.token_webhook_url, settings.token_webhook_user)
-    if not force_refresh and key in _token_cache:
-        return _token_cache[key]
+    key = (settings.token_webhook_url, settings.token_webhook_user)
+    now = time.time()
+    if not force_refresh:
+        cached = _token_cache.get(key)
+        if cached and cached[1] > now:
+            return cached[0]
 
     auth = (
         (settings.token_webhook_user, settings.token_webhook_pass)
         if settings.token_webhook_user
         else None
     )
-    log_event("ZOHO_TOKEN_FETCH", env=settings.env, force_refresh=force_refresh)
+    log_event("ZOHO_TOKEN_FETCH", source="webhook_n8n", force_refresh=force_refresh)
     async with httpx.AsyncClient(timeout=15.0) as c:
         r = await c.get(settings.token_webhook_url, auth=auth)
         r.raise_for_status()
@@ -38,7 +52,8 @@ async def _get_zoho_token(force_refresh: bool = False) -> str:
     token = data.get("access_token") or data.get("token")
     if not token:
         raise ValueError(f"Token no presente en respuesta del webhook: {list(data)[:5]}")
-    _token_cache[key] = token
+    ttl = max(int(data.get("expires_in", _WEBHOOK_TOKEN_TTL_SECONDS)) - 60, 60)
+    _token_cache[key] = (token, time.time() + ttl)
     return token
 
 
