@@ -26,8 +26,12 @@ from ..tools.zoho_actions import (
 from .common import StateKeys, log_event
 
 
+def _zoho_actions_flag() -> str:
+    return (os.getenv("ZOHO_ACTIONS_ENABLED") or "").strip().lower()
+
+
 def _zoho_actions_enabled() -> bool:
-    return (os.getenv("ZOHO_ACTIONS_ENABLED") or "").strip().lower() in {"1", "true", "yes"}
+    return _zoho_actions_flag() in {"1", "true", "yes"}
 
 
 def _build_context(state: dict[str, Any]) -> dict[str, Any]:
@@ -112,7 +116,11 @@ class CierreAgent(BaseAgent):
         if _zoho_actions_enabled():
             zoho_result = await _publicar_en_zoho(context["ticket"], html, warnings)
         else:
-            log_event("PIPELINE_CIERRE", step="zoho_actions_disabled")
+            log_event(
+                "PIPELINE_CIERRE",
+                step="zoho_actions_disabled",
+                zoho_actions_enabled=_zoho_actions_flag() or "unset",
+            )
 
         log_event(
             "PIPELINE_CIERRE",

@@ -94,7 +94,9 @@ Copiar `.env.example` a `.env` y rellenar. Las vars `VPS_*` son del helper `conn
 
 ### Zoho
 
-`ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE`, `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS`.
+`ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE`, `ZOHO_ACTIONS_ENABLED`, `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS`.
+
+`ZOHO_ACTIONS_ENABLED=true` habilita las acciones de escritura al cierre: comentario publico, respuesta por correo cuando hay email y cierre del ticket. Si queda vacio o en `false`, el agente solo genera el HTML.
 
 Para usar sandbox o production se cambian manualmente los valores de esas mismas variables; el código no usa selector de ambiente ni sufijos.
 
@@ -195,6 +197,7 @@ El workflow construye imagen single-stage, sube a Artifact Registry y despliega 
 | `GEMINI_API_KEY` | API key Google AI Studio |
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` |
 | `ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE` | Zoho Desk |
+| `ZOHO_ACTIONS_ENABLED` | `true` para comentar/responder/cerrar tickets; por defecto el agente solo genera HTML |
 | `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS` | n8n token webhook |
 | `CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL` | Servicios internos CUN |
 | `CUN_COMPANY_PAYMENTS_NIT_PARAM` | Parámetro NIT para `company-payments` (`nitEmpresa`) |
