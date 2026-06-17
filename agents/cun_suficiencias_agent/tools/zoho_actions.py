@@ -1,14 +1,20 @@
-"""Acciones de escritura sobre Zoho Desk vía MCP (streamablehttp + ClientSession).
+"""Acciones de escritura sobre Zoho Desk.
 
 Todas las funciones envían `contentType: "html"` para evitar el escape visible
-en el ticket.
+en el ticket. Por defecto usa REST con el token OAuth de Zoho; MCP queda como
+fallback/compatibilidad porque algunas conexiones MCP requieren reautorización
+manual y devuelven "Connection not authorised".
 """
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
+import httpx
+
 from ..subagents.common import log_event
+from .zoho_attachments import _get_zoho_token, _headers
 from .zoho_config import get_zoho_settings
 
 try:
@@ -17,6 +23,69 @@ try:
 except ImportError:  # pragma: no cover
     ClientSession = None  # type: ignore
     streamablehttp_client = None  # type: ignore
+
+
+def _actions_transport() -> str:
+    return (os.getenv("ZOHO_ACTIONS_TRANSPORT") or "rest").strip().lower()
+
+
+def _rest_base_and_org() -> tuple[str, str]:
+    settings = get_zoho_settings()
+    if not settings.desk_api_base or not settings.org_id:
+        missing = []
+        if not settings.desk_api_base:
+            missing.append("ZOHO_DESK_API_BASE")
+        if not settings.org_id:
+            missing.append("ZOHO_ORG_ID")
+        raise RuntimeError(f"Zoho REST no configurado; faltan: {', '.join(missing)}")
+    return settings.desk_api_base.rstrip("/"), settings.org_id
+
+
+async def _call_rest(
+    method: str,
+    path: str,
+    body: dict[str, Any] | None,
+    *,
+    action: str,
+) -> dict[str, Any]:
+    """Llama Zoho Desk REST con token OAuth y refresh en 401."""
+    base, org_id = _rest_base_and_org()
+    url = f"{base}{path}"
+
+    async def send(force_refresh: bool = False) -> httpx.Response:
+        token = await _get_zoho_token(force_refresh=force_refresh)
+        headers = _headers(token, org_id)
+        headers["Content-Type"] = "application/json"
+        async with httpx.AsyncClient(timeout=30.0) as c:
+            return await c.request(method, url, headers=headers, json=body)
+
+    log_event("ZOHO_REST_CALL", action=action, method=method, path=path)
+    response = await send()
+    if response.status_code == 401:
+        response = await send(force_refresh=True)
+
+    data = _response_payload(response)
+    summary = _summarize_result(data)
+    log_event(
+        "ZOHO_REST_RESULT",
+        action=action,
+        status=response.status_code,
+        ok=response.is_success,
+        summary=summary,
+    )
+    if not response.is_success:
+        raise RuntimeError(f"{action} REST falló HTTP {response.status_code}: {summary}")
+    return data
+
+
+def _response_payload(response: httpx.Response) -> dict[str, Any]:
+    if not response.content:
+        return {"status_code": response.status_code}
+    try:
+        data = response.json()
+    except ValueError:
+        return {"status_code": response.status_code, "raw": response.text}
+    return data if isinstance(data, dict) else {"data": data, "status_code": response.status_code}
 
 
 async def _call_mcp(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
@@ -113,6 +182,22 @@ def _is_error_result(data: dict[str, Any]) -> bool:
             stripped = text.strip()
             if not stripped:
                 continue
+
+            lowered = stripped.lower()
+            error_markers = (
+                "cannot perform this operation",
+                "connection not authorised",
+                "connection not authorized",
+                "not authorised",
+                "not authorized",
+                "unauthorised",
+                "unauthorized",
+                "forbidden",
+                "permission denied",
+            )
+            if any(marker in lowered for marker in error_markers):
+                return True
+
             try:
                 parsed = json.loads(stripped)
             except ValueError:
@@ -133,6 +218,18 @@ async def publicar_comentario_ticket(
     ticket_id: str, content: str, is_public: bool = True
 ) -> dict[str, Any]:
     """Publica un comentario HTML en un ticket Zoho Desk."""
+    if _actions_transport() != "mcp":
+        return await _call_rest(
+            "POST",
+            f"/tickets/{ticket_id}/comments",
+            {
+                "content": content,
+                "contentType": "html",
+                "isPublic": is_public,
+            },
+            action="create_ticket_comment",
+        )
+
     settings = get_zoho_settings()
     return await _call_mcp(
         "ZohoDesk_createTicketComment",
@@ -150,6 +247,15 @@ async def publicar_comentario_ticket(
 
 async def cerrar_ticket(ticket_id: str) -> dict[str, Any]:
     """Cierra un ticket Zoho Desk."""
+    if _actions_transport() != "mcp":
+        closed_status = (os.getenv("ZOHO_CLOSED_STATUS") or "Closed").strip()
+        return await _call_rest(
+            "PATCH",
+            f"/tickets/{ticket_id}",
+            {"status": closed_status},
+            action="close_ticket",
+        )
+
     settings = get_zoho_settings()
     return await _call_mcp(
         "ZohoDesk_closeTickets",
@@ -164,6 +270,19 @@ async def enviar_respuesta_correo(
     ticket_id: str, content: str, to_email: str
 ) -> dict[str, Any]:
     """Envía una respuesta por correo (canal EMAIL) al solicitante del ticket."""
+    if _actions_transport() != "mcp":
+        return await _call_rest(
+            "POST",
+            f"/tickets/{ticket_id}/sendReply",
+            {
+                "channel": "EMAIL",
+                "content": content,
+                "contentType": "html",
+                "to": to_email,
+            },
+            action="send_reply",
+        )
+
     settings = get_zoho_settings()
     return await _call_mcp(
         "ZohoDesk_sendReply",

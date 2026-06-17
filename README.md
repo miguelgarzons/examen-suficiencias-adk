@@ -12,7 +12,7 @@ Patrón: `adk api_server` puro + `BaseAgent` determinístico + Jinja institucion
 - **`root_agent`** = `OrchestratorAgent` (`BaseAgent` custom) que encadena subagentes y ramifica según `session.state`.
 - Cada subagente es un `BaseAgent` con `_run_async_impl`, emite `Event` con `EventActions(state_delta={...})`.
 - El LLM **no** participa en lógica de negocio ni en el cierre — todo es determinístico.
-- Integraciones: servicios internos CUN vía HTTP, Zoho Desk MCP (escritura), Zoho REST (descarga de adjuntos) y n8n webhook (refresh OAuth).
+- Integraciones: servicios internos CUN vía HTTP, Zoho Desk REST (escritura/adjuntos), Zoho MCP opcional y n8n webhook (refresh OAuth).
 
 ## 2. Flujo del pipeline
 
@@ -68,7 +68,7 @@ cun_suficiencias_agent/                   (= "mi_agente" del spec; raíz del pro
         │   ├── validators.py             helpers + evaluar_procedencia
         │   ├── response_builder.py       construir_recibo + elegir_template
         │   ├── zoho_config.py            credenciales Zoho por env vars
-        │   ├── zoho_actions.py           MCP: comentar/cerrar/responder reply
+        │   ├── zoho_actions.py           REST/MCP: comentar/cerrar/responder reply
         │   └── zoho_attachments.py       REST + n8n token
         └── templates/
             ├── base.html
@@ -97,6 +97,8 @@ Copiar `.env.example` a `.env` y rellenar. Las vars `VPS_*` son del helper `conn
 `ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE`, `ZOHO_ACTIONS_ENABLED`, `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS`.
 
 `ZOHO_ACTIONS_ENABLED=true` habilita las acciones de escritura al cierre: comentario publico, respuesta por correo cuando hay email y cierre del ticket. Si queda vacio o en `false`, el agente solo genera el HTML.
+
+`ZOHO_ACTIONS_TRANSPORT=rest` usa `ZOHO_TOKEN_WEBHOOK_*` o `ZOHO_OAUTH_*` contra Zoho Desk API. `ZOHO_ACTIONS_TRANSPORT=mcp` usa `ZOHO_MCP_URL`, pero requiere que el servidor MCP tenga la conexión de Zoho Desk autorizada.
 
 Para usar sandbox o production se cambian manualmente los valores de esas mismas variables; el código no usa selector de ambiente ni sufijos.
 
@@ -198,6 +200,7 @@ El workflow construye imagen single-stage, sube a Artifact Registry y despliega 
 | `GOOGLE_GENAI_USE_VERTEXAI` | `false` |
 | `ZOHO_MCP_URL`, `ZOHO_ORG_ID`, `ZOHO_DEFAULT_DEPARTMENT_ID`, `ZOHO_DESK_API_BASE` | Zoho Desk |
 | `ZOHO_ACTIONS_ENABLED` | `true` para comentar/responder/cerrar tickets; por defecto el agente solo genera HTML |
+| `ZOHO_ACTIONS_TRANSPORT`, `ZOHO_CLOSED_STATUS` | `rest` por defecto; estado de cierre por defecto `Closed` |
 | `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS` | n8n token webhook |
 | `CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL` | Servicios internos CUN |
 | `CUN_COMPANY_PAYMENTS_NIT_PARAM` | Parámetro NIT para `company-payments` (`nitEmpresa`) |
@@ -243,7 +246,7 @@ rm /tmp/sa-key.json
 - `tools/zoho_config.py` resuelve **en runtime** (no en import-time) las variables únicas `ZOHO_*`.
 - Para cambiar entre sandbox y production, actualiza manualmente los valores de esas variables en `.env`, GitHub Secrets o Cloud Run.
 - El servidor MCP de Zoho expone **300+ tools**. `config/mcp/servers.yaml` limita a 60 via `max_tools` + `include_name_patterns` para evitar saturar el contexto de eventuales tool-calls.
-- `tools/zoho_actions.py` siempre envía `contentType: "html"` — sin esto, el HTML aparece escapado en el ticket.
+- `tools/zoho_actions.py` usa REST por defecto para comentario/respuesta/cierre con `contentType: "html"`; MCP queda como fallback con `ZOHO_ACTIONS_TRANSPORT=mcp`.
 - `tools/zoho_attachments.py` usa REST (`Zoho-oauthtoken`) porque MCP no descarga bytes; el token se obtiene del webhook n8n y se cachea por `(label, url, user)` con refresh automático en 401.
 
 ## 11. Antipatrones evitados
