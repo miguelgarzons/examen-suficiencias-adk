@@ -117,6 +117,18 @@ jobs:
           CUN_SERVICES_API_TOKEN: ${{ secrets.CUN_SERVICES_API_TOKEN }}
 
         run: |
+          ZOHO_ACTIONS_FLAG="$(echo "${ZOHO_ACTIONS_ENABLED:-}" | tr '[:upper:]' '[:lower:]')"
+          if [[ "$ZOHO_ACTIONS_FLAG" == "true" || "$ZOHO_ACTIONS_FLAG" == "1" || "$ZOHO_ACTIONS_FLAG" == "yes" ]]; then
+            missing=()
+            [[ -n "${ZOHO_MCP_URL:-}" ]] || missing+=("ZOHO_MCP_URL")
+            [[ -n "${ZOHO_ORG_ID:-}" ]] || missing+=("ZOHO_ORG_ID")
+
+            if (( ${#missing[@]} > 0 )); then
+              echo "::error::ZOHO_ACTIONS_ENABLED=true requiere configurar: ${missing[*]}"
+              exit 1
+            fi
+          fi
+
           gcloud run deploy $SERVICE_NAME \
             --image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/app:${{ github.sha }} \
             --platform managed \

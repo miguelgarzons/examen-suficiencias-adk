@@ -24,7 +24,8 @@ async def _call_mcp(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
 
     settings = get_zoho_settings()
     if not settings.is_configured_mcp():
-        raise RuntimeError(f"Zoho MCP no configurado para env={settings.env}")
+        missing = ", ".join(settings.missing_mcp_vars())
+        raise RuntimeError(f"Zoho MCP no configurado para env={settings.env}; faltan: {missing}")
 
     headers = {
         "Accept": "application/json, text/event-stream",

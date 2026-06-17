@@ -19,6 +19,14 @@ class ZohoSettings:
     def is_configured_mcp(self) -> bool:
         return bool(self.mcp_url and self.org_id)
 
+    def missing_mcp_vars(self) -> list[str]:
+        missing: list[str] = []
+        if not self.mcp_url:
+            missing.append("ZOHO_MCP_URL")
+        if not self.org_id:
+            missing.append("ZOHO_ORG_ID")
+        return missing
+
     def is_configured_rest(self) -> bool:
         return bool(self.desk_api_base and self.token_webhook_url and self.org_id)
 
