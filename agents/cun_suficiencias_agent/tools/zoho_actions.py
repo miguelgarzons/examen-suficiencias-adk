@@ -5,6 +5,7 @@ en el ticket.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from ..subagents.common import log_event
@@ -36,7 +37,14 @@ async def _call_mcp(tool_name: str, args: dict[str, Any]) -> dict[str, Any]:
         async with ClientSession(r, w) as s:
             await s.initialize()
             result = await s.call_tool(tool_name, args)
-    return _to_dict(result)
+
+    data = _to_dict(result)
+    summary = _summarize_result(data)
+    is_error = _is_error_result(data)
+    log_event("ZOHO_MCP_RESULT", tool=tool_name, is_error=is_error, summary=summary)
+    if is_error:
+        raise RuntimeError(f"{tool_name} devolvió error: {summary}")
+    return data
 
 
 def _to_dict(result: Any) -> dict[str, Any]:
@@ -50,6 +58,75 @@ def _to_dict(result: Any) -> dict[str, Any]:
             except Exception:  # noqa: BLE001
                 continue
     return {"raw": str(result)}
+
+
+def _summarize_result(data: dict[str, Any], max_chars: int = 900) -> str:
+    """Resumen compacto para logs sin imprimir payloads gigantes."""
+    content = data.get("content")
+    if isinstance(content, list):
+        parts: list[str] = []
+        for item in content:
+            if isinstance(item, dict):
+                text = item.get("text") or item.get("data") or item.get("content")
+                if text:
+                    parts.append(str(text))
+            elif item:
+                parts.append(str(item))
+        if parts:
+            text = " | ".join(parts)
+            return text[:max_chars]
+
+    for key in ("structuredContent", "structured_content", "result", "error", "errors", "raw"):
+        value = data.get(key)
+        if value:
+            try:
+                text = json.dumps(value, ensure_ascii=False, default=str)
+            except (TypeError, ValueError):
+                text = str(value)
+            return text[:max_chars]
+
+    try:
+        text = json.dumps(data, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        text = str(data)
+    return text[:max_chars]
+
+
+def _is_error_result(data: dict[str, Any]) -> bool:
+    """Detecta errores lógicos del MCP aunque el transporte HTTP sea 200/202."""
+    for key in ("isError", "is_error"):
+        if data.get(key) is True:
+            return True
+
+    for key in ("error", "errors"):
+        if data.get(key):
+            return True
+
+    content = data.get("content")
+    if isinstance(content, list):
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            text = item.get("text")
+            if not isinstance(text, str):
+                continue
+            stripped = text.strip()
+            if not stripped:
+                continue
+            try:
+                parsed = json.loads(stripped)
+            except ValueError:
+                continue
+            if isinstance(parsed, dict):
+                if parsed.get("isError") is True or parsed.get("is_error") is True:
+                    return True
+                if parsed.get("error") or parsed.get("errors"):
+                    return True
+                status = str(parsed.get("status") or parsed.get("status_code") or "").lower()
+                if status in {"error", "failed", "failure"}:
+                    return True
+
+    return False
 
 
 async def publicar_comentario_ticket(
