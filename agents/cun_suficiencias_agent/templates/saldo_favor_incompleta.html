@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title_section %}
+<h2 style="margin:0 0 8px 0;font-size:20px;color:#111827;">Solicitud incompleta</h2>
+<p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;">Categoría: Pagos · Subcategoría: Uso de saldo a favor</p>
+{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Recibimos su solicitud de <strong>uso de saldo a favor</strong>, pero no encontramos el número de documento necesario para validar liquidaciones activas y cartera.
+</p>
+
+<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#92400e;">
+    <strong>Detalle:</strong> {{ causal }}
+  </p>
+</div>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 8px 0;">Para continuar, por favor responda este ticket con:</p>
+<ul style="font-size:15px;line-height:1.6;margin:0 0 16px 24px;padding:0;">
+  <li>Número de documento de identidad del estudiante.</li>
+  <li>Tipo de documento, si aplica.</li>
+  <li>Número de recibo o liquidación, si ya lo conoce.</li>
+</ul>
+{% endblock %}

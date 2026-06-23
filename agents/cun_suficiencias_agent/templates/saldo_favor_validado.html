@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title_section %}
+<h2 style="margin:0 0 8px 0;font-size:20px;color:#111827;">Solicitud de uso de saldo a favor</h2>
+<p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;">Categoría: Pagos · Subcategoría: Uso de saldo a favor</p>
+{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Recibimos su solicitud de <strong>uso de saldo a favor</strong>. Al validar la información registrada, encontramos liquidación activa asociada al documento <strong>{{ identificacion }}</strong>.
+</p>
+
+{% if periodo_actual %}
+<div style="background:#eff6ff;border-left:4px solid #2563eb;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#1e3a8a;">
+    <strong>Periodo académico vigente:</strong> {{ periodo_actual.codigoPeriodo or 'No identificado' }}
+    {% if periodo_actual.fechaInicioGlobal and periodo_actual.fechaFinalGlobal %}
+      ({{ periodo_actual.fechaInicioGlobal[:10] }} al {{ periodo_actual.fechaFinalGlobal[:10] }})
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:18px 0;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+  <tr style="background:#f9fafb;">
+    <td style="padding:10px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Periodo</td>
+    <td style="padding:10px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Liquidación</td>
+    <td style="padding:10px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Recibo</td>
+    <td style="padding:10px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Estado</td>
+    <td style="padding:10px 12px;font-size:12px;color:#6b7280;border-bottom:1px solid #e5e7eb;">Valor</td>
+  </tr>
+  {% for row in liquidaciones[:5] %}
+  <tr>
+    <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ row.periodoAcademico or '-' }}</td>
+    <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ row.numeroLiquidacion or '-' }}</td>
+    <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ row.numeroRecibo or '-' }}</td>
+    <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ row.estadoRecibo or row.estadoLiquidacion or '-' }}</td>
+    <td style="padding:10px 12px;font-size:13px;color:#111827;border-bottom:1px solid #e5e7eb;">{{ row.valorLiquidacion or '-' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Con esta validación, el área responsable continuará con la revisión del saldo a favor y su asociación al recibo correspondiente, de acuerdo con las políticas institucionales.
+</p>
+
+<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:13px;color:#92400e;">
+    Si el saldo a favor no se encuentra cruzado o requiere soporte adicional, el área de cartera podrá solicitar información complementaria por este mismo canal.
+  </p>
+</div>
+{% endblock %}

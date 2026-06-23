@@ -1,6 +1,7 @@
 """Helpers defensivos + reglas de procedencia de Pruebas de Suficiencia."""
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 
 _TRUE_VALUES = {"1", "true", "t", "si", "sí", "yes", "y", "x", "ok", "approved", "aprobado"}
@@ -39,6 +40,36 @@ def safe_int(value: Any, default: int = 0) -> int:
 def require_fields(payload: dict[str, Any], fields: list[str]) -> list[str]:
     """Devuelve la lista de campos faltantes."""
     return [f for f in fields if not safe_str(payload.get(f))]
+
+
+def _norm_text(value: Any) -> str:
+    text = safe_str(value).lower()
+    text = "".join(
+        c for c in unicodedata.normalize("NFD", text)
+        if unicodedata.category(c) != "Mn"
+    )
+    return " ".join(text.split())
+
+
+def es_uso_saldo_favor(ticket: dict[str, Any]) -> bool:
+    """Detecta tickets de Pagos / Uso de saldo a favor desde campos Zoho."""
+    haystack = " ".join(
+        _norm_text(ticket.get(key))
+        for key in ("category", "subcategory", "tipo_solicitud", "subject")
+    )
+    raw = ticket.get("raw")
+    if isinstance(raw, dict):
+        haystack = " ".join(
+            [
+                haystack,
+                _norm_text(raw.get("category")),
+                _norm_text(raw.get("subCategory")),
+                _norm_text(raw.get("cf_categoria")),
+                _norm_text(raw.get("cf_sub_categorias")),
+                _norm_text(raw.get("subject")),
+            ]
+        )
+    return "saldo a favor" in haystack
 
 
 def row_flag(rows: list[dict[str, Any]], column: str) -> bool:
@@ -80,8 +111,27 @@ def evaluar_procedencia(
         TEMPLATE_EXTEMPORANEO,
         TEMPLATE_NO_PROCEDE,
         TEMPLATE_RECIBO_GENERADO,
+        TEMPLATE_SALDO_FAVOR_INCOMPLETA,
+        TEMPLATE_SALDO_FAVOR_SIN_LIQUIDACION,
+        TEMPLATE_SALDO_FAVOR_VALIDADO,
         TEMPLATE_SOLICITUD_INCOMPLETA,
     )
+
+    if es_uso_saldo_favor(ticket):
+        faltantes = require_fields(ticket, ["identificacion"])
+        if faltantes:
+            return False, f"Faltan datos obligatorios: {', '.join(faltantes)}", TEMPLATE_SALDO_FAVOR_INCOMPLETA
+        if not liquidacion:
+            return (
+                False,
+                "No se encontraron liquidaciones activas para asociar el saldo a favor",
+                TEMPLATE_SALDO_FAVOR_SIN_LIQUIDACION,
+            )
+        return (
+            False,
+            "Se encontraron liquidaciones activas para validar aplicación de saldo a favor",
+            TEMPLATE_SALDO_FAVOR_VALIDADO,
+        )
 
     # Regla 1 — campos obligatorios
     faltantes = require_fields(ticket, ["identificacion", "asignatura"])

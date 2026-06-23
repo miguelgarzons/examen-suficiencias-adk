@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title_section %}
+<h2 style="margin:0 0 8px 0;font-size:20px;color:#111827;">Solicitud de uso de saldo a favor</h2>
+<p style="margin:0 0 20px 0;font-size:13px;color:#6b7280;">Categoría: Pagos · Subcategoría: Uso de saldo a favor</p>
+{% endblock %}
+{% block body %}
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">Estimado(a) <strong>{{ nombre }}</strong>,</p>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Recibimos su solicitud de <strong>uso de saldo a favor</strong>. Al consultar el documento <strong>{{ identificacion }}</strong>, no encontramos una liquidación activa disponible para asociar el saldo.
+</p>
+
+{% if periodo_actual %}
+<div style="background:#eff6ff;border-left:4px solid #2563eb;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#1e3a8a;">
+    <strong>Periodo académico vigente:</strong> {{ periodo_actual.codigoPeriodo or 'No identificado' }}.
+  </p>
+</div>
+{% endif %}
+
+<div style="background:#fef3c7;border-left:4px solid #f59e0b;padding:14px 16px;border-radius:4px;margin:18px 0;">
+  <p style="margin:0;font-size:14px;color:#92400e;">
+    Para continuar, debe existir una orden o recibo vigente al cual pueda aplicarse el saldo a favor.
+  </p>
+</div>
+
+<p style="font-size:15px;line-height:1.55;margin:0 0 12px 0;">
+  Le recomendamos verificar en SINÚ o en el portal de pagos si ya cuenta con una liquidación activa. Si ya fue generada recientemente, por favor responda este ticket con el número de recibo o liquidación.
+</p>
+{% endblock %}

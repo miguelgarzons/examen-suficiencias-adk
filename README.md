@@ -104,7 +104,7 @@ Para usar sandbox o production se cambian manualmente los valores de esas mismas
 
 ### Servicios internos CUN
 
-`CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL`, `CUN_COMPANY_PAYMENTS_NIT_PARAM`, `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME`, `CUN_SERVICES_PASSWORD`, `CUN_SERVICES_API_TOKEN`, `CUN_SERVICES_TIMEOUT_SECONDS`, `CUN_SERVICES_VERIFY_SSL`.
+`CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL`, `CUN_COMPANY_PAYMENTS_NIT_PARAM`, `CUN_ACTIVE_LIQUIDATIONS_URL`, `CUN_ACTIVE_LIQUIDATIONS_DOCUMENT_PARAM`, `CUN_ACADEMIC_CALENDAR_GLOBAL_URL`, `CUN_ACADEMIC_CALENDAR_URL`, `CUN_ACADEMIC_CALENDAR_PERIOD_PARAM`, `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME`, `CUN_SERVICES_PASSWORD`, `CUN_SERVICES_API_TOKEN`, `CUN_SERVICES_TIMEOUT_SECONDS`, `CUN_SERVICES_VERIFY_SSL`.
 
 El cliente genera token con `POST CUN_SERVICES_AUTH_URL` usando `username/password` y lo envía como `Authorization: Bearer <access_token>`. `CUN_SERVICES_API_TOKEN` queda como override opcional si se necesita inyectar un token fijo.
 
@@ -204,6 +204,8 @@ El workflow construye imagen single-stage, sube a Artifact Registry y despliega 
 | `ZOHO_TOKEN_WEBHOOK_URL`, `ZOHO_TOKEN_WEBHOOK_USER`, `ZOHO_TOKEN_WEBHOOK_PASS` | n8n token webhook |
 | `CUN_ADDITIONAL_FEES_URL`, `CUN_COMPANY_PAYMENTS_URL` | Servicios internos CUN |
 | `CUN_COMPANY_PAYMENTS_NIT_PARAM` | Parámetro NIT para `company-payments` (`nitEmpresa`) |
+| `CUN_ACTIVE_LIQUIDATIONS_URL`, `CUN_ACTIVE_LIQUIDATIONS_DOCUMENT_PARAM` | Servicio de liquidaciones activas para saldo a favor |
+| `CUN_ACADEMIC_CALENDAR_GLOBAL_URL`, `CUN_ACADEMIC_CALENDAR_URL`, `CUN_ACADEMIC_CALENDAR_PERIOD_PARAM` | Calendario académico global/por periodo |
 | `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME`, `CUN_SERVICES_PASSWORD` | Login para generar token |
 | `CUN_SERVICES_API_TOKEN`, `CUN_SERVICES_TIMEOUT_SECONDS`, `CUN_SERVICES_VERIFY_SSL` | Token fijo opcional, timeout y verificación TLS |
 
@@ -237,6 +239,7 @@ rm /tmp/sa-key.json
 
 - `tools/cun_services.py` consume `additional-fees` para catálogo de pecuniarios.
 - `tools/cun_services.py` consume `company-payments` para pagos de terceros y filtra por NIT/identificación cuando el servicio retorna catálogo completo.
+- `tools/cun_services.py` consume `active-liquidations` y `academic-calendar-global` para validar solicitudes de uso de saldo a favor y detectar el periodo vigente.
 - Los endpoints requieren autorización; configurar `CUN_SERVICES_AUTH_URL`, `CUN_SERVICES_USERNAME` y `CUN_SERVICES_PASSWORD` en `.env`, GitHub Secrets o Cloud Run.
 - Si `CUN_SERVICES_API_TOKEN` está definido, se usa como token fijo y no se hace login.
 - En STG, `CUN_SERVICES_VERIFY_SSL=false` evita fallos por cadena TLS autofirmada.

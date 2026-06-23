@@ -20,6 +20,8 @@ class StateKeys:
     PROCEDE = "procede"
     CAUSAL = "causal"
     LIQUIDACION = "liquidacion"
+    CALENDARIO_GLOBAL = "calendario_global"
+    PERIODO_ACTUAL = "periodo_actual"
     PAGOS = "pagos"
     PECUNIARIOS = "pecuniarios"
     RECIBO = "recibo"
@@ -37,6 +39,9 @@ class TemplateNames:
     NO_PROCEDE = "no_procede.html"
     RECIBO_GENERADO = "recibo_generado.html"
     PAGO_VALIDADO = "pago_validado.html"
+    SALDO_FAVOR_VALIDADO = "saldo_favor_validado.html"
+    SALDO_FAVOR_SIN_LIQUIDACION = "saldo_favor_sin_liquidacion.html"
+    SALDO_FAVOR_INCOMPLETA = "saldo_favor_incompleta.html"
 
 
 _log_level = os.getenv("APP_LOG_LEVEL", "INFO").upper()

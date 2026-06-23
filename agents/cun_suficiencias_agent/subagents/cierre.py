@@ -37,6 +37,8 @@ def _zoho_actions_enabled() -> bool:
 def _build_context(state: dict[str, Any]) -> dict[str, Any]:
     ticket = state.get(StateKeys.TICKET) or {}
     recibo = state.get(StateKeys.RECIBO) or {}
+    liquidacion = state.get(StateKeys.LIQUIDACION) or []
+    periodo_actual = state.get(StateKeys.PERIODO_ACTUAL) or {}
     return {
         "ticket": ticket,
         "ticket_id": ticket.get("ticket_id", ""),
@@ -48,6 +50,9 @@ def _build_context(state: dict[str, Any]) -> dict[str, Any]:
         "procede": bool(state.get(StateKeys.PROCEDE)),
         "pago_validado": bool(state.get(StateKeys.PAGO_VALIDADO)),
         "recibo": recibo,
+        "liquidacion": liquidacion,
+        "liquidaciones": liquidacion,
+        "periodo_actual": periodo_actual,
         "errores": state.get(StateKeys.ERRORES, []) or [],
         "warnings": state.get(StateKeys.WARNINGS, []) or [],
     }

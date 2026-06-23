@@ -16,6 +16,15 @@ DEFAULT_ADDITIONAL_FEES_URL = (
 DEFAULT_COMPANY_PAYMENTS_URL = (
     "https://appzoho-stg.cunapp.pro/api/v1/adk/validaciones-financieras/company-payments"
 )
+DEFAULT_ACTIVE_LIQUIDATIONS_URL = (
+    "https://appzoho.cunapp.dev/api/v1/adk/validaciones-financieras/active-liquidations"
+)
+DEFAULT_ACADEMIC_CALENDAR_GLOBAL_URL = (
+    "https://appzoho.cunapp.dev/api/v1/adk/catalogos/academic-calendar-global"
+)
+DEFAULT_ACADEMIC_CALENDAR_URL = (
+    "https://appzoho.cunapp.dev/api/v1/adk/catalogos/academic-calendar"
+)
 DEFAULT_AUTH_URL = "https://appzoho-stg.cunapp.pro/api/v1/auth/login"
 
 _DEFAULT_LOGIN_TTL_SECONDS = 1800
@@ -95,7 +104,7 @@ def _extract_rows(payload: Any) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
 
-    for key in ("data", "items", "results", "records", "content"):
+    for key in ("data", "items", "results", "records", "content", "periodos"):
         value = payload.get(key)
         if isinstance(value, list):
             return [row for row in value if isinstance(row, dict)]
@@ -152,4 +161,35 @@ class PecuniariosRepository:
         url = _env("CUN_ADDITIONAL_FEES_URL", DEFAULT_ADDITIONAL_FEES_URL)
         rows = await _get_rows(url)
         log_event("CUN_ADDITIONAL_FEES", rows=len(rows))
+        return rows
+
+
+class LiquidacionesActivasRepository:
+    @classmethod
+    async def by_documento(cls, documento: str) -> list[dict[str, Any]]:
+        if not documento:
+            return []
+        url = _env("CUN_ACTIVE_LIQUIDATIONS_URL", DEFAULT_ACTIVE_LIQUIDATIONS_URL)
+        document_param = _env("CUN_ACTIVE_LIQUIDATIONS_DOCUMENT_PARAM", "clienteSolicitado")
+        rows = await _get_rows(url, params={document_param: documento})
+        log_event("CUN_ACTIVE_LIQUIDATIONS", rows=len(rows), documento=documento)
+        return rows
+
+
+class CalendarioAcademicoRepository:
+    @classmethod
+    async def global_periods(cls) -> list[dict[str, Any]]:
+        url = _env("CUN_ACADEMIC_CALENDAR_GLOBAL_URL", DEFAULT_ACADEMIC_CALENDAR_GLOBAL_URL)
+        rows = await _get_rows(url)
+        log_event("CUN_ACADEMIC_CALENDAR_GLOBAL", rows=len(rows))
+        return rows
+
+    @classmethod
+    async def by_periodo(cls, codigo_periodo: str) -> list[dict[str, Any]]:
+        if not codigo_periodo:
+            return []
+        url = _env("CUN_ACADEMIC_CALENDAR_URL", DEFAULT_ACADEMIC_CALENDAR_URL)
+        period_param = _env("CUN_ACADEMIC_CALENDAR_PERIOD_PARAM", "codigoPeriodo")
+        rows = await _get_rows(url, params={period_param: codigo_periodo})
+        log_event("CUN_ACADEMIC_CALENDAR_PERIOD", rows=len(rows), codigo_periodo=codigo_periodo)
         return rows
