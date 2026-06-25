@@ -18,6 +18,7 @@ from google.adk.agents.invocation_context import InvocationContext
 from google.adk.events import Event, EventActions
 from google.genai import types as genai_types
 
+from ..tools.text_extractors import extraer_asignaturas_desde_texto
 from ..tools.validators import safe_str
 from .common import StateKeys, log_event
 
@@ -98,6 +99,11 @@ def _normalizar_ticket(raw: dict[str, Any]) -> dict[str, Any]:
     ticket_id = safe_str(_dig(raw, "ticket_id", "id", "ticketNumber"))
     identificacion = safe_str(_dig(raw, "identificacion", "cf_numero_de_documento", "documento", "numero_documento"))
     asignatura = safe_str(_dig(raw, "asignatura", "cf_asignatura", "materia"))
+    descripcion = safe_str(_dig(raw, "description", "descripcion", "content", "body", "message", "mensaje", "text"))
+    asignaturas_extraidas = []
+    if not asignatura:
+        asignaturas_extraidas = extraer_asignaturas_desde_texto("\n".join([descripcion, safe_str(raw.get("subject"))]))
+        asignatura = "; ".join(asignaturas_extraidas)
     codigo = safe_str(_dig(raw, "codigo_asignatura", "cf_codigo_asignatura", "codigo"))
     categoria = safe_str(_dig(raw, "category", "cf_categoria", "categoria"))
     subcategoria = safe_str(_dig(raw, "subCategory", "cf_sub_categorias", "subcategoria"))
@@ -108,11 +114,13 @@ def _normalizar_ticket(raw: dict[str, Any]) -> dict[str, Any]:
     return {
         "ticket_id": ticket_id,
         "subject": safe_str(raw.get("subject")),
+        "descripcion": descripcion,
         "category": categoria,
         "subcategory": subcategoria,
         "tipo_solicitud": tipo,
         "identificacion": identificacion,
         "asignatura": asignatura,
+        "asignaturas": asignaturas_extraidas or ([asignatura] if asignatura else []),
         "codigo_asignatura": codigo,
         "nombre": nombre,
         "email": email,

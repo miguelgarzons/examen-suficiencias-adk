@@ -42,6 +42,7 @@ class TemplateNames:
     SALDO_FAVOR_VALIDADO = "saldo_favor_validado.html"
     SALDO_FAVOR_SIN_LIQUIDACION = "saldo_favor_sin_liquidacion.html"
     SALDO_FAVOR_INCOMPLETA = "saldo_favor_incompleta.html"
+    REVISION_MANUAL = "revision_manual.html"
 
 
 _log_level = os.getenv("APP_LOG_LEVEL", "INFO").upper()

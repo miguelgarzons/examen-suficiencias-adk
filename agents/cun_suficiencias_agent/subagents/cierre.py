@@ -4,7 +4,8 @@ NO usa LlmAgent. NO llama al modelo. NO lanza 500. SIEMPRE produce HTML.
 
 Si ZOHO_ACTIONS_ENABLED=true, publica la respuesta en el ticket (comentario
 público, respuesta por correo si hay email y cierre del ticket) en modo
-best-effort: ningún fallo de Zoho rompe el pipeline ni impide el HTML final.
+best-effort. Los casos fuera del alcance del agente dejan solo nota interna y
+no se cierran. Ningún fallo de Zoho rompe el pipeline ni impide el HTML final.
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ from google.adk.events import Event, EventActions
 from google.genai import types as genai_types
 
 from ..tools.response_builder import elegir_template
+from ..tools.response_builder import TEMPLATE_REVISION_MANUAL
 from ..tools.template_renderer import render_template
 from ..tools.zoho_actions import (
     cerrar_ticket,
@@ -97,6 +99,31 @@ async def _publicar_en_zoho(
     return resultado
 
 
+async def _registrar_revision_manual(
+    ticket: dict[str, Any], html: str, warnings: list[dict[str, Any]]
+) -> dict[str, Any]:
+    """Deja nota interna y evita responder/cerrar cuando el caso no es del agente."""
+    resultado: dict[str, Any] = {
+        "comentario": "",
+        "correo": "skip_revision_manual",
+        "cierre": "skip_revision_manual",
+    }
+    ticket_id = (ticket.get("ticket_id") or "").strip()
+    if not ticket_id:
+        log_event("PIPELINE_CIERRE", step="zoho_skip_sin_ticket_id")
+        return resultado
+
+    try:
+        await publicar_comentario_ticket(ticket_id, html, is_public=False)
+        resultado["comentario"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        resultado["comentario"] = f"error: {exc}"
+        warnings.append({"stage": "cierre", "message": f"Nota interna Zoho falló: {exc}"})
+
+    log_event("PIPELINE_CIERRE", step="zoho_revision_manual", ticket_id=ticket_id, **resultado)
+    return resultado
+
+
 class CierreAgent(BaseAgent):
     async def _run_async_impl(self, ctx: InvocationContext):  # type: ignore[override]
         state = ctx.session.state
@@ -119,7 +146,10 @@ class CierreAgent(BaseAgent):
 
         zoho_result: dict[str, Any] = {}
         if _zoho_actions_enabled():
-            zoho_result = await _publicar_en_zoho(context["ticket"], html, warnings)
+            if template == TEMPLATE_REVISION_MANUAL:
+                zoho_result = await _registrar_revision_manual(context["ticket"], html, warnings)
+            else:
+                zoho_result = await _publicar_en_zoho(context["ticket"], html, warnings)
         else:
             log_event(
                 "PIPELINE_CIERRE",

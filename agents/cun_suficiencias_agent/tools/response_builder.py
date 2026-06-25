@@ -13,6 +13,7 @@ TEMPLATE_PAGO_VALIDADO = "pago_validado.html"
 TEMPLATE_SALDO_FAVOR_VALIDADO = "saldo_favor_validado.html"
 TEMPLATE_SALDO_FAVOR_SIN_LIQUIDACION = "saldo_favor_sin_liquidacion.html"
 TEMPLATE_SALDO_FAVOR_INCOMPLETA = "saldo_favor_incompleta.html"
+TEMPLATE_REVISION_MANUAL = "revision_manual.html"
 
 
 def _first_row(rows: list[dict[str, Any]] | None) -> dict[str, Any]:

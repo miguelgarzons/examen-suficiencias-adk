@@ -72,6 +72,31 @@ def es_uso_saldo_favor(ticket: dict[str, Any]) -> bool:
     return "saldo a favor" in haystack
 
 
+def es_examen_supletorio(ticket: dict[str, Any]) -> bool:
+    """Detecta solicitudes de supletorio mal clasificadas como suficiencia."""
+    campos = [
+        ticket.get("subject"),
+        ticket.get("tipo_solicitud"),
+        ticket.get("descripcion"),
+        ticket.get("asignatura"),
+        ticket.get("category"),
+        ticket.get("subcategory"),
+    ]
+    raw = ticket.get("raw")
+    if isinstance(raw, dict):
+        campos.extend(
+            [
+                raw.get("subject"),
+                raw.get("description"),
+                raw.get("plainText"),
+                raw.get("cf_categoria"),
+                raw.get("cf_sub_categorias"),
+            ]
+        )
+    haystack = " ".join(_norm_text(value) for value in campos)
+    return "supletorio" in haystack or "supletoria" in haystack
+
+
 def row_flag(rows: list[dict[str, Any]], column: str) -> bool:
     """True si alguna fila tiene `column` en true."""
     if not rows:
@@ -115,7 +140,15 @@ def evaluar_procedencia(
         TEMPLATE_SALDO_FAVOR_SIN_LIQUIDACION,
         TEMPLATE_SALDO_FAVOR_VALIDADO,
         TEMPLATE_SOLICITUD_INCOMPLETA,
+        TEMPLATE_REVISION_MANUAL,
     )
+
+    if es_examen_supletorio(ticket):
+        return (
+            False,
+            "La solicitud corresponde a examen supletorio y requiere revisión manual",
+            TEMPLATE_REVISION_MANUAL,
+        )
 
     if es_uso_saldo_favor(ticket):
         faltantes = require_fields(ticket, ["identificacion"])
